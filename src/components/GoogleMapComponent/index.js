@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect ,useRef} from 'react';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 import { MdCamera } from 'react-icons/md';
 import CameraComponent from '../CameraComponent'
 
+import { storage } from '../../firebase/firebase';
 
 const containerStyle = {
   width: '100%',
@@ -16,7 +17,8 @@ const GoogleMapComponent = () => {
   const [searchInput, setSearchInput] = useState('');
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [capturedImages, setCapturedImages] = useState([]);
-  
+  const [currentPosition, setCurrentPosition] = useState(null);
+  const webcamRef = useRef(null);
   useEffect(() => {
     // Get user's current location using Geolocation API
     if (navigator.geolocation) {
@@ -62,13 +64,32 @@ const GoogleMapComponent = () => {
  
   let autocomplete;
   const onLoad = ref => (autocomplete = ref);
+  const capturePhoto = async () => {
+    if (webcamRef.current) {
+      const imageSrc = webcamRef.current.getScreenshot();
+      const imageBlob = await fetch(imageSrc).then((res) => res.blob());
 
+      // Create a reference to the Firebase Storage location
+      const storageRef = storage.ref();
+
+      // Upload the image file to Firebase Storage
+      const imageRef = storageRef.child(`images/${Date.now()}.jpg`);
+      await imageRef.put(imageBlob);
+
+      // Get the download URL of the uploaded image
+      const imageUrl = await imageRef.getDownloadURL();
+
+      // Update capturedImages state with the image URL and geolocation
+      setCapturedImages(prevImages => [...prevImages, { url: imageUrl, location: currentPosition }]);
+    }
+  };
   return (
     <LoadScript
       googleMapsApiKey="AIzaSyDG6mOFENxqrzWoLoei68HcUAWLnUu01OE"
       libraries={["places"]}
     >
       <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
+      
         <GoogleMap
           mapContainerStyle={{ width: '100%', height: '100%' }}
           center={currentLocation}
@@ -77,6 +98,7 @@ const GoogleMapComponent = () => {
           {/* Marker for current location */}
           <Marker
             position={currentLocation}
+
             
           />
           {capturedImages.map((image, index) => (

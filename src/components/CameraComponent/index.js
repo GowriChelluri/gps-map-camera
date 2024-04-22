@@ -39,8 +39,28 @@ const CameraComponent = () => {
       // Get the download URL of the uploaded image
       const imageUrl = await imageRef.getDownloadURL();
 
-      // Update capturedImages state with the image URL and geolocation
-      setCapturedImages(prevImages => [...prevImages, { url: imageUrl, location: currentPosition }]);
+      // Get the address of the captured image
+      const address = await getAddress(currentPosition.lat, currentPosition.lng);
+
+      // Update capturedImages state with the image URL, location, and address
+      setCapturedImages(prevImages => [...prevImages, { url: imageUrl, location: currentPosition, address: address }]);
+    }
+  };
+
+  // Function to fetch address using reverse geocoding
+  const getAddress = async (latitude, longitude) => {
+    try {
+      const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=AIzaSyDG6mOFENxqrzWoLoei68HcUAWLnUu01OE`);
+      const data = await response.json();
+      if (data.status === 'OK' && data.results && data.results.length > 0) {
+        return data.results[0].formatted_address;
+      } else {
+        console.error('Error fetching address:', data.error_message || 'Unknown error');
+        return 'Address not found';
+      }
+    } catch (error) {
+      console.error('Error fetching address:', error);
+      return 'Address not found';
     }
   };
 
@@ -66,6 +86,7 @@ const CameraComponent = () => {
               <img src={image.url} alt={`Captured ${index}`} style={{ width: '100px', height: 'auto' }} />
               <p>Latitude: {image.location?.lat}</p>
               <p>Longitude: {image.location?.lng}</p>
+              <p>Address: {image.address}</p> {/* Display the address */}
             </li>
           ))}
         </ul>
